@@ -35,8 +35,8 @@ app.get("/all", async (req, res) => {
         for await (const file of files) {
             file.stats = fs.statSync(file.path);
             file.isFolder = true;
-            const fileIsImage = ['png', 'jpg'].some(ext => file.path.endsWith(ext));
-            const fileIsVideo = ['mov'].some(ext => file.path.endsWith(ext));
+            const fileIsImage = ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'tiff'].some(ext => file.path.endsWith(ext));
+            const fileIsVideo = ['mov', 'mp4', 'avi', 'mkv', 'flv', 'wmv'].some(ext => file.path.endsWith(ext));
             const parentFolder = file.path.match(/\/([^\/]+)\/[^\/]+$/)?.[1];
 
             if (fileIsImage || fileIsVideo) {
@@ -67,6 +67,7 @@ app.get("/all", async (req, res) => {
                             ...parentFolderObject?.files || [],
                             file
                         ];
+                        files = files.filter(f => f.path !== file.path);
                     }
                 }
             }
@@ -95,7 +96,7 @@ app.get("/video/:videoId", (req, res) => {
             const start = parseInt(parts[0], 10);
             const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
             const chunksize = (end - start) + 1;
-            const file = fs.createReadStream(videoPath, { start, end });
+            const file = fs.createReadStream(videoPath, {start, end});
             const head = {
                 'Content-Range': `bytes ${start}-${end}/${fileSize}`,
                 'Accept-Ranges': 'bytes',
