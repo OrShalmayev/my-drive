@@ -1,91 +1,225 @@
-<div *ngIf="isLoading===false" class="flex h-[calc(100vh-4rem)] bg-gray-100">
-  <!-- Adjusted height to account for nav bar -->
-
-  <!-- Sidebar -->
-  <div class="w-64 bg-white shadow-lg">
-    <div class="p-4">
-      <h1 class="text-2xl font-semibold text-gray-800">My Drive</h1>
-      <div class="mt-4">
-        <p class="text-sm text-gray-600">
-          Storage: {{ formatSize(diskDetails?.free || 0) }} free of {{ formatSize(diskDetails?.size || 0) }}
-        </p>
-        <div class="w-full bg-gray-200 rounded-full h-2.5 mt-2">
-          <div class="bg-blue-600 h-2.5 rounded-full"
-               [style.width]="((diskDetails?.size - diskDetails?.free) / diskDetails?.size * 100) + '%'">
-          </div>
-        </div>
+<!-- drive.component.html -->
+<div class="h-full flex flex-col bg-gray-50">
+  <!-- Header with search and controls -->
+  <div class="bg-white border-b p-4 flex items-center justify-between">
+    <div class="flex items-center space-x-4 flex-1">
+      <!-- Search -->
+      <div class="relative flex-1 max-w-xl">
+        <input
+          type="text"
+          placeholder="Search files and folders..."
+          [(ngModel)]="searchQuery"
+          (ngModelChange)="onSearchChange()"
+          class="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <i class="fas fa-search absolute left-3 top-2.5 text-gray-400"></i>
       </div>
-    </div>
-  </div>
 
-  <!-- Main Content -->
-  <div class="flex-1 overflow-hidden">
-    <!-- Breadcrumb -->
-    <div class="bg-white p-4 shadow">
-      <div class="flex items-center space-x-2">
-        <button *ngIf="currentPath.length"
-                (click)="navigateUp()"
-                class="text-gray-600 hover:text-gray-800">
-          <i class="fas fa-arrow-left"></i>
+      <!-- Upload buttons -->
+      <div class="relative">
+        <button
+          (click)="isUploadMenuOpen = !isUploadMenuOpen"
+          class="px-4 py-2 bg-blue-600 text-white rounded-lg flex items-center space-x-2 hover:bg-blue-700"
+        >
+          <i class="fas fa-upload"></i>
+          <span>New</span>
+          <i class="fas fa-chevron-down"></i>
         </button>
-        <span *ngFor="let path of currentPath; let last = last" class="flex items-center">
-  <span [class.font-semibold]="last">{{ path }}</span>
-<span *ngIf="!last" class="mx-2">/</span>
-  </span>
+
+        <div *ngIf="isUploadMenuOpen" class="absolute top-full right-0 mt-2 bg-white rounded-lg shadow-lg border p-2 w-48">
+          <label class="block p-2 hover:bg-gray-100 rounded cursor-pointer">
+            <input
+              type="file"
+              multiple
+              (change)="handleFileUpload($event)"
+              class="hidden"
+            />
+            <span class="flex items-center space-x-2">
+              <i class="fas fa-upload"></i>
+              <span>Upload files</span>
+            </span>
+          </label>
+
+          <label class="block p-2 hover:bg-gray-100 rounded cursor-pointer">
+            <input
+              type="file"
+              webkitdirectory
+              directory
+              (change)="handleFileUpload($event)"
+              class="hidden"
+            />
+            <span class="flex items-center space-x-2">
+              <i class="fas fa-folder-plus"></i>
+              <span>Upload folder</span>
+            </span>
+          </label>
+        </div>
+      </div>
+
+      <!-- View mode toggles -->
+      <div class="flex items-center space-x-2">
+        <button
+          (click)="viewMode = 'grid'"
+          [class.bg-gray-200]="viewMode === 'grid'"
+          class="p-2 rounded hover:bg-gray-100"
+        >
+          <i class="fas fa-grid-2"></i>
+        </button>
+        <button
+          (click)="viewMode = 'list'"
+          [class.bg-gray-200]="viewMode === 'list'"
+          class="p-2 rounded hover:bg-gray-100"
+        >
+          <i class="fas fa-list"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sort controls -->
+  <div class="bg-white border-b px-4 py-2 flex items-center space-x-4">
+    <button
+      (click)="handleSort('name')"
+      [class.bg-gray-200]="sortConfig.key === 'name'"
+      class="px-3 py-1 rounded hover:bg-gray-100"
+    >
+      Name
+      <i *ngIf="sortConfig.key === 'name'" 
+         [class.fa-sort-up]="sortConfig.direction === 'asc'"
+         [class.fa-sort-down]="sortConfig.direction === 'desc'"
+         class="fas"></i>
+    </button>
+    <button
+      (click)="handleSort('date')"
+      [class.bg-gray-200]="sortConfig.key === 'date'"
+      class="px-3 py-1 rounded hover:bg-gray-100"
+    >
+      Date
+      <i *ngIf="sortConfig.key === 'date'"
+         [class.fa-sort-up]="sortConfig.direction === 'asc'"
+         [class.fa-sort-down]="sortConfig.direction === 'desc'"
+         class="fas"></i>
+    </button>
+    <button
+      (click)="handleSort('size')"
+      [class.bg-gray-200]="sortConfig.key === 'size'"
+      class="px-3 py-1 rounded hover:bg-gray-100"
+    >
+      Size
+      <i *ngIf="sortConfig.key === 'size'"
+         [class.fa-sort-up]="sortConfig.direction === 'asc'"
+         [class.fa-sort-down]="sortConfig.direction === 'desc'"
+         class="fas"></i>
+    </button>
+  </div>
+
+  <!-- Storage info -->
+  <div class="bg-white border-b px-4 py-3">
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-sm text-gray-600">Storage</span>
+      <span class="text-sm text-gray-600" *ngIf="diskDetails">
+        {{ formatSize(diskDetails.free) }} free of {{ formatSize(diskDetails.size) }}
+      </span>
+    </div>
+    <div class="w-full bg-gray-200 rounded-full h-2">
+      <div
+        class="bg-blue-600 h-2 rounded-full"
+        [style.width.%]="diskDetails ? ((diskDetails.size - diskDetails.free) / diskDetails.size) * 100 : 0"
+      ></div>
+    </div>
+  </div>
+
+  <!-- Breadcrumb navigation -->
+  <div class="bg-white border-b px-4 py-2 flex items-center space-x-2">
+    <button
+      *ngIf="currentPath.length"
+      (click)="navigateUp()"
+      class="text-gray-600 hover:text-gray-800"
+    >
+      <i class="fas fa-arrow-left"></i>
+    </button>
+    <ng-container *ngFor="let path of currentPath; let last = last">
+      <span [class.font-semibold]="last">{{ path }}</span>
+      <span *ngIf="!last" class="text-gray-400">/</span>
+    </ng-container>
+  </div>
+
+  <!-- File grid/list view -->
+  <div class="flex-1 overflow-auto p-4">
+    <!-- Grid View -->
+    <div *ngIf="viewMode === 'grid'" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+      <div
+        *ngFor="let item of currentFolder"
+        (click)="item.isFolder ? navigateToFolder(item) : null"
+        class="bg-white p-4 rounded-lg shadow hover:shadow-md transition-shadow cursor-pointer"
+      >
+        <div class="aspect-square mb-2 flex items-center justify-center">
+          <ng-container [ngSwitch]="true">
+            <i *ngSwitchCase="item.isFolder" class="fas fa-folder text-yellow-500 text-4xl"></i>
+            <img
+              *ngSwitchCase="item.isImage"
+              [src]="item.imageData"
+              [alt]="item.name"
+              class="w-full h-full object-cover rounded"
+            />
+            <div
+              *ngSwitchDefault
+              class="w-16 h-16 bg-gray-200 rounded flex items-center justify-center text-sm"
+            >
+              {{ item.name.split('.').pop().toUpperCase() }}
+            </div>
+          </ng-container>
+        </div>
+        <p class="text-sm font-medium truncate">{{ item.name }}</p>
+        <p class="text-xs text-gray-500">{{ formatSize(item.stats.size) }}</p>
       </div>
     </div>
 
-    <!-- Files Grid -->
-    <div class="p-6 overflow-auto h-[calc(100vh-8rem)]">
-      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-        <div *ngFor="let item of currentFolder"
-             (click)="item.isFolder ? navigateToFolder(item) : selectFile(item)"
-             class="bg-white p-4 rounded-lg shadow hover:shadow-md cursor-pointer">
-          <div class="aspect-square mb-2">
-            <!-- Folder -->
-            <div *ngIf="item.isFolder" class="w-full h-full flex items-center justify-center text-4xl text-yellow-500">
-              <i class="fas fa-folder"></i>
+    <!-- List View -->
+    <div *ngIf="viewMode === 'list'" class="bg-white rounded-lg shadow">
+      <div
+        *ngFor="let item of currentFolder"
+        (click)="item.isFolder ? navigateToFolder(item) : null"
+        class="flex items-center px-4 py-3 border-b last:border-b-0 hover:bg-gray-50 cursor-pointer"
+      >
+        <div class="w-8">
+          <ng-container [ngSwitch]="true">
+            <i *ngSwitchCase="item.isFolder" class="fas fa-folder text-yellow-500"></i>
+            <img
+              *ngSwitchCase="item.isImage"
+              [src]="item.imageData"
+              [alt]="item.name"
+              class="w-5 h-5 object-cover rounded"
+            />
+            <div
+              *ngSwitchDefault
+              class="w-5 h-5 bg-gray-200 rounded flex items-center justify-center text-xs"
+            >
+              {{ item.name.split('.').pop().toUpperCase() }}
             </div>
-            <!-- Image -->
-            <img *ngIf="item.isImage"
-                 [src]="item.imageData"
-                 class="w-full h-full object-cover rounded">
-            <!-- Video -->
-            <div *ngIf="item.isVideo" class="w-full h-full flex items-center justify-center text-4xl text-blue-500">
-              <i class="fas fa-video"></i>
-            </div>
-          </div>
-          <p class="text-sm font-medium text-gray-800 truncate">{{ item.name }}</p>
-          <p class="text-xs text-gray-500">{{ formatSize(item.stats.size) }}</p>
+          </ng-container>
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-medium truncate">{{ item.name }}</p>
+        </div>
+        <div class="text-sm text-gray-500 w-32">
+          {{ item.stats.mtime | date }}
+        </div>
+        <div class="text-sm text-gray-500 w-24 text-right">
+          {{ formatSize(item.stats.size) }}
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Preview Panel -->
-  <div *ngIf="selectedFile" class="w-96 bg-white shadow-lg p-4">
-    <div class="flex justify-between items-center mb-4">
-      <h2 class="text-lg font-semibold">{{ selectedFile.name }}</h2>
-      <button (click)="selectedFile = undefined" class="text-gray-500 hover:text-gray-700">
-        <i class="fas fa-times"></i>
-      </button>
-    </div>
-
-    <!-- Image Preview -->
-    <img *ngIf="selectedFile.isImage"
-         [src]="selectedFile.imageData"
-         class="w-full rounded">
-
-    <!-- Video Preview -->
-    <video *ngIf="selectedFile.isVideo"
-           [src]="fileService.getVideoUrl(selectedFile.videoId)"
-           controls
-           class="w-full rounded">
-    </video>
-
-    <div class="mt-4">
-      <p class="text-sm text-gray-600">Size: {{ formatSize(selectedFile.stats?.size) }}</p>
-      <p class="text-sm text-gray-600">Modified: {{ selectedFile.stats?.mtime | date }}</p>
+  <!-- Upload progress indicator -->
+  <div
+    *ngIf="isUploading"
+    class="fixed bottom-4 right-4 bg-white rounded-lg shadow-lg p-4"
+  >
+    <div class="flex items-center space-x-3">
+      <i class="fas fa-upload animate-bounce"></i>
+      <span>Uploading...</span>
     </div>
   </div>
 </div>
