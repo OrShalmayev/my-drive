@@ -1,4 +1,3 @@
-// drive.component.ts
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -26,11 +25,40 @@ export class DriveComponent implements OnInit {
   viewMode: 'grid' | 'list' = 'grid';
   isUploading = false;
   isUploadMenuOpen = false;
+  selectedItem: any = null;
 
   constructor(private fileService: FileService) {}
 
   ngOnInit() {
     this.loadFiles();
+  }
+
+  openItemMenu(event: MouseEvent, item: any) {
+    event.stopPropagation();
+    this.selectedItem = this.selectedItem === item ? null : item;
+  }
+
+  downloadItem(event: MouseEvent, item: any) {
+    event.stopPropagation();
+    this.selectedItem = null;
+    
+    if (item.isFolder) {
+      // For folders, call the service to get a zip
+      this.fileService.downloadFolder([...this.currentPath, item.name].join('/')).subscribe(
+        (blob: Blob) => {
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `${item.name}.zip`;
+          link.click();
+          window.URL.revokeObjectURL(url);
+        }
+      );
+    } else {
+      // For single files, use the direct download endpoint
+      const path = [...this.currentPath, item.name].join('/');
+      window.open(`${this.fileService.apiUrl}/download?path=${encodeURIComponent(path)}`, '_blank');
+    }
   }
 
   loadFiles() {

@@ -1,6 +1,6 @@
 import express from 'express';
-import bodyParser from 'body-parser';
 import cors from 'cors';
+import archiver from 'archiver';
 import {globby} from 'globby';
 import fs from 'fs';
 import checkDiskSpace from 'check-disk-space'
@@ -12,7 +12,7 @@ app.use(express.json({limit: '200mb'}));
 app.use(express.urlencoded({limit: '200mb'}));
 app.use(cors());
 
-const directoryPath = '/Users/oshalmay/images';
+const directoryPath = process.env.IMAGES_PATH || '/data/images';
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         const uploadPath = path.join(directoryPath, req.body.path || '');
@@ -77,7 +77,6 @@ app.get("/all", async (req, res) => {
         
         // Process files and create a map
         const { fileMap: newFileMap } = processFiles(files);
-        console.log(newFileMap);
         fileMap = newFileMap;
 
         // Build folder hierarchy
@@ -146,6 +145,55 @@ app.get("/video/:videoId", (req, res) => {
         res.status(500).send('Error streaming video');
     }
 });
+
+app.get('/download', (req, res) => {
+    try {
+        const filePath = path.join(directoryPath, req.query.path);
+        
+        // Security check to prevent directory traversal
+        if (!filePath.startsWith(directoryPath)) {
+            return res.status(403).send('Access denied');
+        }
+
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).send('File not found');
+        }
+
+        res.download(filePath);
+    } catch (error) {
+        console.error('Download error:', error);
+        res.status(500).send('Error downloading file');
+    }
+});
+
+app.get('/download-folder', async (req, res) => {
+    try {
+        const folderPath = path.join(directoryPath, req.query.path);
+        
+        // Security check
+        if (!folderPath.startsWith(directoryPath)) {
+            return res.status(403).send('Access denied');
+        }
+
+        const archive = archiver('zip', { zlib: { level: 9 }});
+        res.attachment(`${path.basename(folderPath)}.zip`);
+
+        archive.pipe(res);
+        archive.directory(folderPath, false);
+
+        archive.on('error', (err) => {
+            throw err;
+        });
+
+        await archive.finalize();
+    } catch (error) {
+        console.error('Folder download error:', error);
+        if (!res.headersSent) {
+            res.status(500).send('Error creating zip archive');
+        }
+    }
+});
+
 const upload = multer({storage: storage});
 
 app.post('/upload', upload.array('files'), (req, res) => {

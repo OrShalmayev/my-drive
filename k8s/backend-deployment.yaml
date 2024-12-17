@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+      - name: backend
+        image: file-server:1.0
+        ports:
+        - containerPort: 4002
+        volumeMounts:
+        - name: images-volume
+          mountPath: /data/images
+      volumes:
+      - name: images-volume
+        hostPath:
+          path: /data/images
+          type: DirectoryOrCreate
