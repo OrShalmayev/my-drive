@@ -99,6 +99,7 @@ export class DriveComponent implements OnInit {
     this.isUploading = true;
     const formData = new FormData();
     Array.from(files).forEach(file => {
+      // @ts-ignore
       formData.append('files', file);
     });
     formData.append('folderName', this.currentPath[this.currentPath.length - 1] || 'root');
