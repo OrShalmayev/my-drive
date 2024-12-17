@@ -57,7 +57,6 @@ app.get("/all", async (req, res) => {
                 file.isFolder = false;
                 file.isImage = fileIsImage;
                 file.isVideo = fileIsVideo;
-
                 // Read and convert image to base64
                 if (fileIsImage) {
                     const data = fs.readFileSync(file.path);
