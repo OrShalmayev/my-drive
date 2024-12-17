@@ -35,19 +35,28 @@ export class DriveComponent implements OnInit {
 
   loadFiles() {
     this.fileService.getAllFiles().subscribe(response => {
+      console.log(response);
       this.files = response.allFilesAndDirs;
       this.diskDetails = response.diskDetails;
       this.updateCurrentFolder();
     });
   }
 
-  updateCurrentFolder() {
+  getCurrentFolderContents() {
     let current = this.files;
     for (const path of this.currentPath) {
       const folder = current.find(f => f.name === path && f.isFolder);
       current = folder?.files || [];
     }
-    this.currentFolder = this.sortFiles(this.filterFiles(current));
+    return current;
+  }
+
+  updateCurrentFolder() {
+    this.currentFolder = this.sortFiles(this.filterFiles(this.getCurrentFolderContents()));
+  }
+
+  getFullPath(): string {
+    return this.currentPath.join('/');
   }
 
   formatSize(bytes: number): string {
@@ -102,10 +111,10 @@ export class DriveComponent implements OnInit {
       // @ts-ignore
       formData.append('files', file);
     });
-    formData.append('folderName', this.currentPath[this.currentPath.length - 1] || 'root');
+    formData.append('path', this.currentPath.join('/'));
 
     try {
-      await this.fileService.uploadFiles(Array.from(files), this.currentPath[this.currentPath.length - 1] || 'root')
+      await this.fileService.uploadFiles(Array.from(files), this.currentPath)
         .toPromise();
       this.loadFiles();
     } catch (error) {
@@ -117,8 +126,10 @@ export class DriveComponent implements OnInit {
   }
 
   navigateToFolder(folder: any) {
-    this.currentPath.push(folder.name);
-    this.updateCurrentFolder();
+    if (folder.isFolder) {
+      this.currentPath.push(folder.name);
+      this.updateCurrentFolder();
+    }
   }
 
   navigateUp() {

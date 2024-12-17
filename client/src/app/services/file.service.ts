@@ -15,17 +15,18 @@ export class FileService {
     return this.http.get<ServerResponse>(`${this.apiUrl}/all`);
   }
 
-  uploadFiles(files: File[], folderName: string = 'uploads'): Observable<any> {
+  uploadFiles(files: File[], currentPath: string[] = []): Observable<any> {
     const formData = new FormData();
     files.forEach(file => {
       formData.append('files', file);
     });
-    formData.append('folderName', folderName);
+    formData.append('path', currentPath.join('/'));
     return this.http.post(`${this.apiUrl}/upload`, formData);
   }
 
-  getVideoUrl(videoId: string): string {
-    return `${this.apiUrl}/video/${videoId}`;
+  createFolder(name: string, currentPath: string[]): Observable<any> {
+    const path = [...currentPath, name].join('/');
+    return this.http.post(`${this.apiUrl}/createFolder`, { path });
   }
-}
 
+}

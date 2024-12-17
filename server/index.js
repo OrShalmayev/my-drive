@@ -15,8 +15,7 @@ app.use(cors());
 const directoryPath = '/Users/oshalmay/images';
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        const folderName = req.body.folderName || 'uploads';
-        const uploadPath = path.join(directoryPath, folderName);
+        const uploadPath = path.join(directoryPath, req.body.path || '');
         if (!fs.existsSync(uploadPath)) {
             fs.mkdirSync(uploadPath, {recursive: true});
         }
@@ -28,16 +27,31 @@ const storage = multer.diskStorage({
 });
 const listAllFilesAndDirs = dir => globby(`${dir}/**/*`, {onlyFiles: false, expandDirectories: true, objectMode: true});
 
+const processFiles = (files) => {
+    const fileMap = new Map();
+    files.forEach(file => {
+        file.files = [];
+        fileMap.set(file.path, file);
+    });
+    return { files, fileMap };
+};
+
 app.get("/all", async (req, res) => {
     let retVal = {}
     retVal.diskDetails = await checkDiskSpace(directoryPath)
+    let fileMap;
+
     retVal.allFilesAndDirs = await listAllFilesAndDirs(directoryPath).then(async (files) => {
         for await (const file of files) {
+            file.relativePath = path.relative(directoryPath, file.path);
             file.stats = fs.statSync(file.path);
             file.isFolder = true;
+            file.files = [];
+            file.name = path.basename(file.path);
+            file.parentPath = path.dirname(file.path);
+
             const fileIsImage = ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'tiff'].some(ext => file.path.endsWith(ext));
             const fileIsVideo = ['mov', 'mp4', 'avi', 'mkv', 'flv', 'wmv'].some(ext => file.path.endsWith(ext));
-            const parentFolder = file.path.match(/\/([^\/]+)\/[^\/]+$/)?.[1];
 
             if (fileIsImage || fileIsVideo) {
                 file.isFolder = false;
@@ -56,28 +70,42 @@ app.get("/all", async (req, res) => {
 
                 // For videos, just send metadata and video ID
                 if (fileIsVideo) {
-                    file.videoId = Buffer.from(file.path).toString('base64'); // Simple way to create a unique ID
-                }
-
-                // Handle parent folder relationship
-                if (parentFolder) {
-                    const parentFolderObject = files.find(file => file.name === parentFolder);
-                    if (parentFolderObject) {
-                        parentFolderObject.files = [
-                            ...parentFolderObject?.files || [],
-                            file
-                        ];
-                        files = files.filter(f => f.path !== file.path);
-                    }
+                    file.videoId = Buffer.from(file.path).toString('base64');
                 }
             }
         }
-        return files;
+        
+        // Process files and create a map
+        const { fileMap: newFileMap } = processFiles(files);
+        console.log(newFileMap);
+        fileMap = newFileMap;
+
+        // Build folder hierarchy
+        files.forEach(file => {
+            if (file.parentPath !== directoryPath) {
+                const parent = fileMap.get(file.parentPath);
+                if (parent) {
+                    parent.files.push(file);
+                }
+            }
+        });
+
+        // Return only top-level files/folders
+        return files.filter(file => file.parentPath === directoryPath);
     });
     res.send(retVal);
 });
 
-// New route for video streaming
+app.post('/createFolder', (req, res) => {
+    const folderPath = path.join(directoryPath, req.body.path);
+    try {
+        fs.mkdirSync(folderPath, { recursive: true });
+        res.send({ message: 'Folder created successfully' });
+    } catch (error) {
+        res.status(500).send({ message: 'Error creating folder', error: error.message });
+    }
+});
+
 app.get("/video/:videoId", (req, res) => {
     try {
         const videoPath = Buffer.from(req.params.videoId, 'base64').toString();
@@ -134,16 +162,6 @@ app.use((err, req, res, next) => {
     }
     next();
 });
-// app.post("/upload", async (req, res) => {
-//     const {images,folderName} = req.body;
-//     images.forEach(image => {
-//         const {imageName, data} = image;
-//         const path = `${directoryPath}/${folderName}/${imageName}`;
-//         fs.writeFileSync(path, Buffer.from(data, 'base64'));
-//     });
-//
-//     res.send({message: "Images uploaded successfully"});
-// });
 
 app.listen(4002, () => {
     console.log("Listening on 4002");

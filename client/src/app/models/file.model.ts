@@ -8,12 +8,14 @@ export interface FileStats {
 export interface FileItem {
   name: string;
   path: string;
+  relativePath?: string;
   stats: FileStats;
   isFolder: boolean;
   isImage?: boolean;
   isVideo?: boolean;
   imageData?: string;  // The base64 image data
   videoId?: string;
+  parentPath?: string;
   files?: FileItem[];
 }
 
