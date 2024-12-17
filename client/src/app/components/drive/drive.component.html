@@ -1,0 +1,91 @@
+<div *ngIf="isLoading===false" class="flex h-[calc(100vh-4rem)] bg-gray-100">
+  <!-- Adjusted height to account for nav bar -->
+
+  <!-- Sidebar -->
+  <div class="w-64 bg-white shadow-lg">
+    <div class="p-4">
+      <h1 class="text-2xl font-semibold text-gray-800">My Drive</h1>
+      <div class="mt-4">
+        <p class="text-sm text-gray-600">
+          Storage: {{ formatSize(diskDetails?.free || 0) }} free of {{ formatSize(diskDetails?.size || 0) }}
+        </p>
+        <div class="w-full bg-gray-200 rounded-full h-2.5 mt-2">
+          <div class="bg-blue-600 h-2.5 rounded-full"
+               [style.width]="((diskDetails?.size - diskDetails?.free) / diskDetails?.size * 100) + '%'">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="flex-1 overflow-hidden">
+    <!-- Breadcrumb -->
+    <div class="bg-white p-4 shadow">
+      <div class="flex items-center space-x-2">
+        <button *ngIf="currentPath.length"
+                (click)="navigateUp()"
+                class="text-gray-600 hover:text-gray-800">
+          <i class="fas fa-arrow-left"></i>
+        </button>
+        <span *ngFor="let path of currentPath; let last = last" class="flex items-center">
+  <span [class.font-semibold]="last">{{ path }}</span>
+<span *ngIf="!last" class="mx-2">/</span>
+  </span>
+      </div>
+    </div>
+
+    <!-- Files Grid -->
+    <div class="p-6 overflow-auto h-[calc(100vh-8rem)]">
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+        <div *ngFor="let item of currentFolder"
+             (click)="item.isFolder ? navigateToFolder(item) : selectFile(item)"
+             class="bg-white p-4 rounded-lg shadow hover:shadow-md cursor-pointer">
+          <div class="aspect-square mb-2">
+            <!-- Folder -->
+            <div *ngIf="item.isFolder" class="w-full h-full flex items-center justify-center text-4xl text-yellow-500">
+              <i class="fas fa-folder"></i>
+            </div>
+            <!-- Image -->
+            <img *ngIf="item.isImage"
+                 [src]="item.imageData"
+                 class="w-full h-full object-cover rounded">
+            <!-- Video -->
+            <div *ngIf="item.isVideo" class="w-full h-full flex items-center justify-center text-4xl text-blue-500">
+              <i class="fas fa-video"></i>
+            </div>
+          </div>
+          <p class="text-sm font-medium text-gray-800 truncate">{{ item.name }}</p>
+          <p class="text-xs text-gray-500">{{ formatSize(item.stats.size) }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Preview Panel -->
+  <div *ngIf="selectedFile" class="w-96 bg-white shadow-lg p-4">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-lg font-semibold">{{ selectedFile.name }}</h2>
+      <button (click)="selectedFile = undefined" class="text-gray-500 hover:text-gray-700">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <!-- Image Preview -->
+    <img *ngIf="selectedFile.isImage"
+         [src]="selectedFile.imageData"
+         class="w-full rounded">
+
+    <!-- Video Preview -->
+    <video *ngIf="selectedFile.isVideo"
+           [src]="fileService.getVideoUrl(selectedFile.videoId)"
+           controls
+           class="w-full rounded">
+    </video>
+
+    <div class="mt-4">
+      <p class="text-sm text-gray-600">Size: {{ formatSize(selectedFile.stats?.size) }}</p>
+      <p class="text-sm text-gray-600">Modified: {{ selectedFile.stats?.mtime | date }}</p>
+    </div>
+  </div>
+</div>
