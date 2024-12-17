@@ -137,6 +137,12 @@ export class DriveComponent implements OnInit {
     this.updateCurrentFolder();
   }
 
+  navigateToIndex(index: number) {
+    // Slice the path array up to the clicked index + 1
+    this.currentPath = this.currentPath.slice(0, index + 1);
+    this.updateCurrentFolder();
+  }
+
   onSearchChange() {
     this.updateCurrentFolder();
   }

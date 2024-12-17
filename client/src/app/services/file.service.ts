@@ -17,10 +17,10 @@ export class FileService {
 
   uploadFiles(files: File[], currentPath: string[] = []): Observable<any> {
     const formData = new FormData();
+    formData.append('path', currentPath.join('/'));
     files.forEach(file => {
       formData.append('files', file);
     });
-    formData.append('path', currentPath.join('/'));
     return this.http.post(`${this.apiUrl}/upload`, formData);
   }
 
