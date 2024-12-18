@@ -9,10 +9,14 @@
                         type="text"
                         placeholder="Search files and folders..."
                         [(ngModel)]="searchQuery"
-                        (ngModelChange)="onSearchChange()"
+                        (ngModelChange)="updateCurrentFolder()"
                         class="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-                <i class="fas fa-search absolute left-3 top-2.5 text-gray-400"></i>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                     stroke="currentColor" class="size-6">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                          d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/>
+                </svg>
             </div>
 
             <!-- Upload buttons -->
@@ -21,9 +25,16 @@
                         (click)="isUploadMenuOpen = !isUploadMenuOpen"
                         class="px-4 py-2 bg-blue-600 text-white rounded-lg flex items-center space-x-2 hover:bg-blue-700"
                 >
-                    <i class="fas fa-upload"></i>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                         stroke="currentColor" class="size-6">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/>
+                    </svg>
                     <span>New</span>
-                    <i class="fas fa-chevron-down"></i>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                         stroke="currentColor" class="size-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5 12 21m0 0-7.5-7.5M12 21V3"/>
+                    </svg>
                 </button>
 
                 <div *ngIf="isUploadMenuOpen"
@@ -36,7 +47,11 @@
                                 class="hidden"
                         />
                         <span class="flex items-center space-x-2">
-              <i class="fas fa-upload"></i>
+<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
+     class="size-6">
+  <path stroke-linecap="round" stroke-linejoin="round"
+        d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/>
+</svg>
               <span>Upload files</span>
             </span>
                     </label>
@@ -50,7 +65,11 @@
                                 class="hidden"
                         />
                         <span class="flex items-center space-x-2">
-              <i class="fas fa-folder-plus"></i>
+<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
+     class="size-6">
+  <path stroke-linecap="round" stroke-linejoin="round"
+        d="M12 10.5v6m3-3H9m4.06-7.19-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z"/>
+</svg>
               <span>Upload folder</span>
             </span>
                     </label>
@@ -86,42 +105,7 @@
     </div>
 
     <!-- Sort controls -->
-    <div class="bg-white border-b px-4 py-2 flex items-center space-x-4">
-        <button
-                (click)="handleSort('name')"
-                [class.bg-gray-200]="sortConfig.key === 'name'"
-                class="px-3 py-1 rounded hover:bg-gray-100"
-        >
-            Name
-            <i *ngIf="sortConfig.key === 'name'"
-               [class.fa-sort-up]="sortConfig.direction === 'asc'"
-               [class.fa-sort-down]="sortConfig.direction === 'desc'"
-               class="fas"></i>
-        </button>
-        <button
-                (click)="handleSort('date')"
-                [class.bg-gray-200]="sortConfig.key === 'date'"
-                class="px-3 py-1 rounded hover:bg-gray-100"
-        >
-            Date
-            <i *ngIf="sortConfig.key === 'date'"
-               [class.fa-sort-up]="sortConfig.direction === 'asc'"
-               [class.fa-sort-down]="sortConfig.direction === 'desc'"
-               class="fas"></i>
-        </button>
-        <button
-                (click)="handleSort('size')"
-                [class.bg-gray-200]="sortConfig.key === 'size'"
-                class="px-3 py-1 rounded hover:bg-gray-100"
-        >
-            Size
-            <i *ngIf="sortConfig.key === 'size'"
-               [class.fa-sort-up]="sortConfig.direction === 'asc'"
-               [class.fa-sort-down]="sortConfig.direction === 'desc'"
-               class="fas"></i>
-        </button>
-    </div>
-
+    <app-sort-controls [sortConfig]="sortConfig" (sortChange)="handleSort($event.key)"/>
     <!-- Storage info -->
     <div class="bg-white border-b px-4 py-3">
         <div class="flex items-center justify-between mb-2">
@@ -163,7 +147,7 @@
         <div *ngIf="viewMode === 'grid'"
              class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             <div
-                    *ngFor="let item of currentFolder"
+                    *ngFor="let item of currentFolder as DriveItem"
                     (click)="item.isFolder ? navigateToFolder(item) : null"
                     class="bg-white p-4 rounded-lg shadow hover:shadow-md transition-shadow cursor-pointer relative"
             >
@@ -213,7 +197,7 @@
         <!-- List View -->
         <div *ngIf="viewMode === 'list'" class="bg-white rounded-lg shadow">
             <div
-                    *ngFor="let item of currentFolder"
+                    *ngFor="let item of currentFolder as DriveItem"
                     (click)="item.isFolder ? navigateToFolder(item) : null"
                     class="flex items-center px-4 py-3 border-b last:border-b-0 hover:bg-gray-50 cursor-pointer relative"
             >

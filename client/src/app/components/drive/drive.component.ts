@@ -1,33 +1,36 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { DriveService } from '../../services/drive.service';
 import { FileService } from '../../services/file.service';
-
-interface SortConfig {
-  key: 'name' | 'date' | 'size';
-  direction: 'asc' | 'desc';
-}
+import {
+  DriveItem,
+  DiskDetails,
+  SortConfig,
+  ViewMode
+} from '../../models/drive.model';
+import {SortControlsComponent} from "./components/sort-controls/sort-controls.component";
 
 @Component({
   selector: 'app-drive',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SortControlsComponent],
   templateUrl: './drive.component.html',
   styleUrls: ['./drive.component.scss']
 })
 export class DriveComponent implements OnInit {
-  files: any[] = [];
-  diskDetails?: { free: number; size: number };
+  files: DriveItem[] = [];
+  diskDetails?: DiskDetails;
   currentPath: string[] = [];
-  currentFolder: any[] = [];
+  currentFolder: DriveItem[] = [];
   searchQuery: string = '';
   sortConfig: SortConfig = { key: 'name', direction: 'asc' };
-  viewMode: 'grid' | 'list' = 'grid';
+  viewMode: ViewMode = 'grid';
   isUploading = false;
   isUploadMenuOpen = false;
   selectedItem: any = null;
 
-  constructor(private fileService: FileService) {}
+  constructor(private fileService: FileService, private driveService: DriveService) {}
 
   ngOnInit() {
     this.loadFiles();
@@ -63,14 +66,14 @@ export class DriveComponent implements OnInit {
 
   loadFiles() {
     this.fileService.getAllFiles().subscribe(response => {
-      console.log(response);
+      // @ts-ignore
       this.files = response.allFilesAndDirs;
       this.diskDetails = response.diskDetails;
       this.updateCurrentFolder();
     });
   }
 
-  getCurrentFolderContents() {
+  getCurrentFolderContents(): DriveItem[] {
     let current = this.files;
     for (const path of this.currentPath) {
       const folder = current.find(f => f.name === path && f.isFolder);
@@ -80,7 +83,8 @@ export class DriveComponent implements OnInit {
   }
 
   updateCurrentFolder() {
-    this.currentFolder = this.sortFiles(this.filterFiles(this.getCurrentFolderContents()));
+    const filtered = this.driveService.filterFiles(this.getCurrentFolderContents(), this.searchQuery);
+    this.currentFolder = this.driveService.sortFiles(filtered, this.sortConfig);
   }
 
   getFullPath(): string {
@@ -88,36 +92,7 @@ export class DriveComponent implements OnInit {
   }
 
   formatSize(bytes: number): string {
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-    if (bytes === 0) return '0 Bytes';
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return `${Math.round(bytes / Math.pow(1024, i))} ${sizes[i]}`;
-  }
-
-  filterFiles(items: any[]): any[] {
-    if (!this.searchQuery) return items;
-    return items.filter(item =>
-      item.name.toLowerCase().includes(this.searchQuery.toLowerCase())
-    );
-  }
-
-  sortFiles(items: any[]): any[] {
-    return [...items].sort((a, b) => {
-      if (this.sortConfig.key === 'name') {
-        return this.sortConfig.direction === 'asc'
-          ? a.name.localeCompare(b.name)
-          : b.name.localeCompare(a.name);
-      } else if (this.sortConfig.key === 'date') {
-        return this.sortConfig.direction === 'asc'
-          ? new Date(a.stats.mtime).getTime() - new Date(b.stats.mtime).getTime()
-          : new Date(b.stats.mtime).getTime() - new Date(a.stats.mtime).getTime();
-      } else if (this.sortConfig.key === 'size') {
-        return this.sortConfig.direction === 'asc'
-          ? a.stats.size - b.stats.size
-          : b.stats.size - a.stats.size;
-      }
-      return 0;
-    });
+    return this.driveService.formatSize(bytes);
   }
 
   handleSort(key: 'name' | 'date' | 'size') {
@@ -153,7 +128,7 @@ export class DriveComponent implements OnInit {
     }
   }
 
-  navigateToFolder(folder: any) {
+  navigateToFolder(folder: DriveItem) {
     if (folder.isFolder) {
       this.currentPath.push(folder.name);
       this.updateCurrentFolder();
