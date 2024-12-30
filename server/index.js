@@ -1,18 +1,19 @@
 import express from 'express';
 import cors from 'cors';
 import archiver from 'archiver';
-import {globby} from 'globby';
+import { globby } from 'globby';
 import fs from 'fs';
 import checkDiskSpace from 'check-disk-space'
 import multer from 'multer';
 import path from 'path';
+import FaceSearchService from "./services/FaceSearchService.js";
 
 const app = express();
 app.use(express.json({limit: '200mb'}));
 app.use(express.urlencoded({limit: '200mb'}));
 app.use(cors());
 
-const directoryPath = process.env.IMAGES_PATH || '/data/images';
+const directoryPath = '/Users/oshalmay/images';
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         const uploadPath = path.join(directoryPath, req.body.path || '');
@@ -40,7 +41,7 @@ app.get("/all", async (req, res) => {
     let retVal = {}
     retVal.diskDetails = await checkDiskSpace(directoryPath)
     let fileMap;
-
+    console.log(directoryPath);
     retVal.allFilesAndDirs = await listAllFilesAndDirs(directoryPath).then(async (files) => {
         for await (const file of files) {
             file.relativePath = path.relative(directoryPath, file.path);
@@ -190,6 +191,32 @@ app.get('/download-folder', async (req, res) => {
         if (!res.headersSent) {
             res.status(500).send('Error creating zip archive');
         }
+    }
+});
+
+app.post('/face-search', async (req, res) => {
+    try {
+        const { referenceImagePath } = req.body;
+        if (!referenceImagePath) {
+            return res.status(400).send('Reference image path is required');
+        }
+
+        const fullPath = path.join(directoryPath, referenceImagePath);
+        
+        // Security check
+        if (!fullPath.startsWith(directoryPath)) {
+            return res.status(403).send('Access denied');
+        }
+
+        const results = await FaceSearchService.findSimilarFaces(
+            fullPath,
+            directoryPath,
+            0.6
+        );
+
+        res.json(results);
+    } catch (error) {
+        res.status(500).send('Error performing face search');
     }
 });
 
