@@ -1,19 +1,22 @@
 import express from 'express';
 import cors from 'cors';
 import archiver from 'archiver';
-import { globby } from 'globby';
+import {globby} from 'globby';
 import fs from 'fs';
 import checkDiskSpace from 'check-disk-space'
 import multer from 'multer';
 import path from 'path';
 import FaceSearchService from "./services/FaceSearchService.js";
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const app = express();
 app.use(express.json({limit: '200mb'}));
 app.use(express.urlencoded({limit: '200mb'}));
 app.use(cors());
 
-const directoryPath = '/Users/oshalmay/images';
+const directoryPath = process.env.DIRECTORY_PATH;
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         const uploadPath = path.join(directoryPath, req.body.path || '');
@@ -34,14 +37,13 @@ const processFiles = (files) => {
         file.files = [];
         fileMap.set(file.path, file);
     });
-    return { files, fileMap };
+    return {files, fileMap};
 };
 
 app.get("/all", async (req, res) => {
     let retVal = {}
     retVal.diskDetails = await checkDiskSpace(directoryPath)
     let fileMap;
-    console.log(directoryPath);
     retVal.allFilesAndDirs = await listAllFilesAndDirs(directoryPath).then(async (files) => {
         for await (const file of files) {
             file.relativePath = path.relative(directoryPath, file.path);
@@ -74,9 +76,9 @@ app.get("/all", async (req, res) => {
                 }
             }
         }
-        
+
         // Process files and create a map
-        const { fileMap: newFileMap } = processFiles(files);
+        const {fileMap: newFileMap} = processFiles(files);
         fileMap = newFileMap;
 
         // Build folder hierarchy
@@ -98,10 +100,10 @@ app.get("/all", async (req, res) => {
 app.post('/createFolder', (req, res) => {
     const folderPath = path.join(directoryPath, req.body.path);
     try {
-        fs.mkdirSync(folderPath, { recursive: true });
-        res.send({ message: 'Folder created successfully' });
+        fs.mkdirSync(folderPath, {recursive: true});
+        res.send({message: 'Folder created successfully'});
     } catch (error) {
-        res.status(500).send({ message: 'Error creating folder', error: error.message });
+        res.status(500).send({message: 'Error creating folder', error: error.message});
     }
 });
 
@@ -149,7 +151,7 @@ app.get("/video/:videoId", (req, res) => {
 app.get('/download', (req, res) => {
     try {
         const filePath = path.join(directoryPath, req.query.path);
-        
+
         // Security check to prevent directory traversal
         if (!filePath.startsWith(directoryPath)) {
             return res.status(403).send('Access denied');
@@ -169,13 +171,13 @@ app.get('/download', (req, res) => {
 app.get('/download-folder', async (req, res) => {
     try {
         const folderPath = path.join(directoryPath, req.query.path);
-        
+
         // Security check
         if (!folderPath.startsWith(directoryPath)) {
             return res.status(403).send('Access denied');
         }
 
-        const archive = archiver('zip', { zlib: { level: 9 }});
+        const archive = archiver('zip', {zlib: {level: 9}});
         res.attachment(`${path.basename(folderPath)}.zip`);
 
         archive.pipe(res);
@@ -196,13 +198,13 @@ app.get('/download-folder', async (req, res) => {
 
 app.post('/face-search', async (req, res) => {
     try {
-        const { referenceImagePath } = req.body;
+        const {referenceImagePath} = req.body;
         if (!referenceImagePath) {
             return res.status(400).send('Reference image path is required');
         }
 
         const fullPath = path.join(directoryPath, referenceImagePath);
-        
+
         // Security check
         if (!fullPath.startsWith(directoryPath)) {
             return res.status(403).send('Access denied');
