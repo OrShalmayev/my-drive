@@ -7,7 +7,7 @@ import {ServerResponse} from "../models/file.model";
     providedIn: 'root'
 })
 export class FileService {
-    apiUrl = 'http://localhost:4002';
+    apiUrl = 'http://localhost:4002/api';
 
     constructor(private http: HttpClient) {
     }

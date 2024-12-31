@@ -193,7 +193,7 @@ app.get('/download-folder', async (req, res) => {
         if (!res.headersSent) {
             res.status(500).send('Error creating zip archive');
         }
-    }
+    }1
 });
 
 app.post('/face-search', async (req, res) => {

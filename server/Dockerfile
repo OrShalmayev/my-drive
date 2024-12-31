@@ -4,5 +4,4 @@ COPY package*.json ./
 RUN npm install
 COPY . .
 EXPOSE 4002
-ENV IMAGES_PATH=/data/images
 CMD ["npm", "start"]
